@@ -1,0 +1,51 @@
+import 'dotenv/config';
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import { checkDatabaseConnection } from './db.js';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+
+app.use(express.json());
+
+// Routes
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Welcome to the API' });
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'UP', message: 'Server is running' });
+});
+
+// 404 handler
+app.use((req: Request, res: Response) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+// Error handler
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+});
+
+// Start the server and check database connection
+const startServer = async () => {
+  try {
+    // Check database connection
+    const dbConnected = await checkDatabaseConnection();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT} | Database: ${dbConnected ? '✅ Connected' : '❌ Not Connected'}`);
+    });
+  } catch (error) {
+    console.error('Server startup error:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
+
+
