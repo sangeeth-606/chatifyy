@@ -18,6 +18,7 @@
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.18",
+    "@types/socket.io": "^3.0.2",
     "express": "^5.1.0",
     "prisma": "^6.8.2",
     "ts-node": "^10.9.2",
