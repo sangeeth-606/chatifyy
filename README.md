@@ -1,4 +1,4 @@
-# Chatifyy
+# Chatifyy <img src="https://res.cloudinary.com/dqfeeuhgq/image/upload/v1747773866/chatifyylogo_2_bbdlpz.png" alt="Chatifyy Logo" width="40" align="top" />
 
 Chatifyy is a real-time chat application that allows users to create and join chat rooms instantly. It features a modern, sleek UI and provides seamless communication between users.
 
