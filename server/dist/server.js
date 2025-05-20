@@ -42,8 +42,12 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
     try {
         const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            console.error('Database connection failed. Server will not start.');
+            process.exit(1);
+        }
         server.listen(PORT, () => {
-            console.log(`🚀 Server running on port ${PORT} | Database: ${dbConnected ? '✅ Connected' : '❌ Not Connected'}`);
+            console.log(`🚀 Server running on port ${PORT} | Database: ✅ Connected`);
         });
     }
     catch (error) {

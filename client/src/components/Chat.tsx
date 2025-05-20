@@ -3,11 +3,9 @@ import { useLocation, useParams } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 import { X, Send } from "lucide-react";
 
-interface ChatRoomProps {
-  darkMode?: boolean;
-}
+interface ChatRoomProps {}
 
-const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
+const Chat: React.FC<ChatRoomProps> = () => {
   const location = useLocation();
   const { roomCode } = useParams<{ roomCode: string }>();
   const userId = location.state?.name || "Anonymous";
@@ -18,6 +16,7 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
   const [input, setInput] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSentMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     const newSocket = io("http://localhost:5000", { transports: ["polling"] });
@@ -25,7 +24,12 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
 
     newSocket.on("connect", () => {
       console.log("ChatRoom connected:", newSocket.id);
-      newSocket.emit("join-room", roomCode, "chat-only");
+      newSocket.emit("set-name", userId);
+
+      newSocket.on("name-set", () => {
+        console.log("Name set successfully");
+        newSocket.emit("join-room", roomCode, "chat-only");
+      });
     });
 
     newSocket.on("previous-messages", (prevMsgs) => {
@@ -35,13 +39,18 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
 
     newSocket.on("receive-message", (message) => {
       console.log("New message received:", message);
+      if (lastSentMessageRef.current === message.text && message.sender === userId) {
+        console.log("Ignoring duplicate message that was sent locally");
+        lastSentMessageRef.current = null;
+        return;
+      }
       setMessages((prev) => [...prev, message]);
     });
 
     return () => {
       newSocket.disconnect();
     };
-  }, [roomCode]);
+  }, [roomCode, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,33 +58,27 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
 
   const sendMessage = () => {
     if (input.trim() && socket) {
+      lastSentMessageRef.current = input.trim();
+
       const newMessage = {
         sender: userId,
         text: input,
-        timestamp: new Date() // Adding timestamp
+        timestamp: new Date()
       };
 
-      // Immediately update local state for instant feedback
       setMessages((prev) => [...prev, newMessage]);
 
-      // Then emit to server
-      socket.emit("send-message", { roomCode, message: newMessage, email: userId });
+      socket.emit("send-message", { 
+        roomCode, 
+        message: { text: input } 
+      });
 
-      // Clear input
       setInput("");
 
-      // Debug logging
-      console.log("Message sent:", newMessage);
-
-      // Force scroll to bottom after sending
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  };
-
-  const classNames = (...classes: string[]) => {
-    return classes.filter(Boolean).join(" ");
   };
 
   const formatMessageWithLinks = (text: string) => {
@@ -100,7 +103,7 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className={darkMode ? "text-blue-400 hover:underline" : "text-blue-600 hover:underline"}
+          className="text-[#d97757] hover:underline"
         >
           {match[0]}
         </a>
@@ -117,68 +120,37 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
   };
 
   return (
-    <div 
-      className={classNames(
-        "h-full grid grid-rows-[auto_1fr_auto] rounded-md shadow-lg border-l",
-        darkMode ? "bg-[#171717] border-[#3C3C3C]" : "bg-white border-gray-300"
-      )}
-      style={{ minHeight: '100%' }}
-    >
-      {/* Header - row 1: auto height */}
-      <div
-        className={classNames(
-          "w-full p-4 border-b",
-          darkMode ? "border-[#2C2C2C]" : "border-gray-300"
-        )}
-      >
-        <h2 className={darkMode ? "text-white" : "text-gray-900"}>
-          <span className={darkMode ? "text-emerald-500" : "text-emerald-600"}>Chat</span>
+    <div className="h-screen grid grid-rows-[auto_1fr_auto] rounded-md shadow-lg border-l bg-[#262624] border-[#1b1b19] text-[#c3c0b6] font-sans">
+      {/* Header */}
+      <div className="w-full p-4 border-b border-[#1b1b19]">
+        <h2 className="text-white flex items-center justify-between font-serif">
+          <span className="text-[#d97757] font-bold">Room: {roomCode}</span>
+          <span className="text-white text-sm font-sans font-medium">Logged in as: {userId}</span>
         </h2>
       </div>
-      
-      {/* Message area - row 2: takes all remaining space */}
-      <div 
-        className={classNames(
-          "overflow-y-auto p-4",
-          darkMode
-            ? "scrollbar-thumb-[#2C2C2C] scrollbar-track-transparent"
-            : "scrollbar-thumb-gray-400 scrollbar-track-gray-100"
-        )}
-      >
+
+      {/* Message List */}
+      <div className="overflow-y-auto p-4 scrollbar-thumb-[#30302e] scrollbar-track-transparent">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={classNames(
-              "w-full mb-2",
+            className={`w-full mb-2 ${
               msg.sender === userId ? "flex justify-end" : "flex justify-start"
-            )}
+            }`}
           >
             <div
-              className={classNames(
-                "p-2 rounded-md max-w-[80%]",
+              className={`p-2 max-w-[80%] ${
                 msg.sender === userId
-                  ? darkMode
-                    ? "bg-emerald-600"
-                    : "bg-emerald-100"
-                  : darkMode
-                  ? "bg-[#2C2C2C]"
-                  : "bg-gray-100"
-              )}
+                  ? "text-right"
+                  : "text-left"
+              }`}
             >
-              <div
-                className={classNames(
-                  "text-xs mb-1 font-medium",
-                  darkMode ? "text-emerald-500" : "text-emerald-600"
-                )}
-              >
+              <div className={`text-xs mb-1 font-semibold font-serif ${
+                msg.sender === userId ? "text-[#d97757]" : "text-white"
+              }`}>
                 {msg.sender}
               </div>
-              <div
-                className={classNames(
-                  "text-sm",
-                  darkMode ? "text-white" : "text-gray-900"
-                )}
-              >
+              <div className="text-sm text-white font-sans font-medium">
                 {formatMessageWithLinks(msg.text)}
               </div>
             </div>
@@ -186,41 +158,29 @@ const Chat: React.FC<ChatRoomProps> = ({ darkMode }) => {
         ))}
         <div ref={messagesEndRef} />
       </div>
-      
-      {/* Input area - row 3: auto height, always at bottom */}
-      <div
-        className={classNames(
-          "w-full p-4 border-t",
-          darkMode ? "border-[#2C2C2C]" : "border-gray-300"
-        )}
-      >
+
+      {/* Input */}
+      <div className="w-full p-4 border-t border-[#1b1b19]">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            className={classNames(
-              "flex-1 p-2 rounded-md border focus:outline-none focus:border-emerald-500 text-sm",
-              darkMode
-                ? "bg-[#2C2C2C] text-white border-[#3C3C3C]"
-                : "bg-white text-black border-gray-300"
-            )}
+            className="flex-1 p-2 rounded-md border bg-[#30302e] text-white font-medium border-[#1b1b19] focus:outline-none focus:ring-2 focus:ring-[#d97757] font-sans"
             placeholder="Type a message..."
           />
           <button
             onClick={sendMessage}
-            className={classNames(
-              "p-2 rounded-md flex items-center justify-center",
+            className={`p-2 rounded-md flex items-center justify-center font-medium transition-colors duration-200 ${
               input.trim()
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : darkMode
-                ? "bg-[#2C2C2C] text-gray-500 cursor-not-allowed"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            )}
+                ? "bg-[#d97757] hover:bg-[#b86246] text-white font-semibold shadow-sm"
+                : "bg-[#30302e] text-[#7c7c78] cursor-not-allowed"
+            }`}
             disabled={!input.trim()}
+            title="Send message"
           >
-            <Send size={18} />
+            <Send size={18} className="stroke-current" />
           </button>
         </div>
       </div>

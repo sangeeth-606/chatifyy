@@ -18,7 +18,8 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",
     "socket.io-client": "^4.8.1",
-    "tailwindcss": "^4.1.7"
+    "tailwindcss": "^4.1.7",
+    "@agoric/ses-ava": "latest"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

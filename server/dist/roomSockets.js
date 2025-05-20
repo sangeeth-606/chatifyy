@@ -5,15 +5,21 @@ export const roomSockets = (io) => {
         // When a user sets their name
         socket.on("set-name", async (userName) => {
             try {
+                console.log("Setting name for user:", userName);
                 // First, try to find the user by name
                 let user = await prisma.user.findFirst({
                     where: { name: userName }
                 });
                 // If user doesn't exist, create a new one
                 if (!user) {
+                    console.log("Creating new user:", userName);
                     user = await prisma.user.create({
                         data: { name: userName }
                     });
+                    console.log("User created with ID:", user.id);
+                }
+                else {
+                    console.log("Found existing user with ID:", user.id);
                 }
                 socket.userId = user.id;
                 socket.emit("name-set", { userId: user.id });
@@ -25,20 +31,42 @@ export const roomSockets = (io) => {
         });
         // When a user joins a room
         socket.on("join-room", async (roomName, peerId) => {
-            if (!socket.userId) {
+            const userId = socket.userId;
+            if (!userId) {
                 socket.emit("error", "Please set name first");
                 return;
             }
             console.log("Join-room received:", roomName, peerId);
             try {
-                const room = await prisma.room.findUnique({ where: { name: roomName } });
+                let room = await prisma.room.findUnique({ where: { name: roomName } });
                 if (!room) {
-                    console.error(`Room ${roomName} not found`);
-                    socket.emit("error", "Room not found");
-                    return;
+                    console.log(`Room ${roomName} not found, creating new room with owner ${userId}`);
+                    try {
+                        room = await prisma.room.create({
+                            data: {
+                                name: roomName,
+                                ownerId: userId,
+                            }
+                        });
+                        console.log(`Created room with ID: ${room.id}`);
+                    }
+                    catch (createError) {
+                        if (createError.code === 'P2002') {
+                            console.log(`Room ${roomName} was created by another user, fetching existing room`);
+                            room = await prisma.room.findUnique({ where: { name: roomName } });
+                            if (!room) {
+                                throw new Error(`Room ${roomName} not found after creation failure`);
+                            }
+                        }
+                        else {
+                            throw createError;
+                        }
+                    }
                 }
+                // Now, join the room
                 socket.join(roomName);
                 socket.to(roomName).emit("user-connected", peerId);
+                // Fetch previous messages
                 const messages = await prisma.chatMessage.findMany({
                     where: { roomId: room.id },
                     orderBy: { createdAt: "asc" },
@@ -63,6 +91,8 @@ export const roomSockets = (io) => {
         // When a user sends a message
         socket.on("send-message", async ({ roomCode, message }) => {
             const userId = socket.userId;
+            console.log("Received message with structure:", JSON.stringify({ roomCode, message }));
+            console.log("User ID from socket:", userId);
             if (!userId) {
                 console.error("User ID not set on socket");
                 socket.emit("error", "User not authenticated");
@@ -73,13 +103,18 @@ export const roomSockets = (io) => {
                 const room = await prisma.room.findUnique({ where: { name: roomCode } });
                 if (!room) {
                     console.error(`Room ${roomCode} not found`);
+                    socket.emit("error", "Room not found");
                     return;
                 }
+                console.log(`Found room: ${room.id} for name ${roomCode}`);
                 const user = await prisma.user.findUnique({ where: { id: userId } });
                 if (!user) {
                     console.error(`User with id ${userId} not found`);
+                    socket.emit("error", "User not found");
                     return;
                 }
+                console.log(`Found user: ${user.name} with id ${userId}`);
+                console.log(`Creating chat message: roomId=${room.id}, userId=${user.id}, text=${message.text}`);
                 const newMessage = await prisma.chatMessage.create({
                     data: {
                         roomId: room.id,
@@ -87,6 +122,7 @@ export const roomSockets = (io) => {
                         message: message.text,
                     },
                 });
+                console.log("Message saved with ID:", newMessage.id);
                 const messageData = {
                     sender: user.name,
                     text: message.text,
@@ -96,6 +132,7 @@ export const roomSockets = (io) => {
             }
             catch (error) {
                 console.error("Error saving message:", error);
+                socket.emit("error", "Failed to save message");
             }
         });
         socket.on("disconnect", () => {
