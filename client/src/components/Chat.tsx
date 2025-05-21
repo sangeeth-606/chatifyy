@@ -23,29 +23,23 @@ const Chat: React.FC<ChatRoomProps> = () => {
       ? import.meta.env.VITE_API_URL_PRODUCTION 
       : import.meta.env.VITE_API_URL_LOCAL;
       
-    console.log(`Connecting to backend at: ${backendUrl}`);
     const newSocket = io(backendUrl, { transports: ["polling"] });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("ChatRoom connected:", newSocket.id);
       newSocket.emit("set-name", userId);
 
       newSocket.on("name-set", () => {
-        console.log("Name set successfully");
         newSocket.emit("join-room", roomCode, "chat-only");
       });
     });
 
     newSocket.on("previous-messages", (prevMsgs) => {
-      console.log("Previous messages received:", prevMsgs);
       setMessages(prevMsgs);
     });
 
     newSocket.on("receive-message", (message) => {
-      console.log("New message received:", message);
       if (lastSentMessageRef.current === message.text && message.sender === userId) {
-        console.log("Ignoring duplicate message that was sent locally");
         lastSentMessageRef.current = null;
         return;
       }
