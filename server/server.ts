@@ -15,15 +15,38 @@ import { roomSockets } from './roomSockets.js';
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000; 
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Define allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',      // Local development
+  'https://chatifyy-self.vercel.app'  // Production
+];
+
+console.log('Allowed Origins:', allowedOrigins);
+console.log('Current Environment:', NODE_ENV);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      console.warn(`Origin not allowed by CORS: ${origin}`);
+      return callback(null, false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
+    credentials: true
   },
   path: '/socket.io',
   transports: ['polling', 'websocket'],
@@ -34,11 +57,20 @@ roomSockets(io);
 
 // Routes
 app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ message: 'Welcome to the API' });
+  res.status(200).json({ 
+    message: 'Welcome to the Chatifyy API',
+    environment: NODE_ENV,
+    version: '1.0.0'
+  });
 });
 
 app.get('/api/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'UP', message: 'Server is running' });
+  res.status(200).json({ 
+    status: 'UP', 
+    message: 'Server is running',
+    environment: NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // 404 handler
@@ -55,13 +87,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Start the server
 const startServer = async () => {
   try {
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`Attempting to start server on port ${PORT}`);
-    
     // Check for required environment variables
     if (!process.env.DATABASE_URL) {
-      console.error('❌ DATABASE_URL environment variable is not set');
-      console.error('You need to set this in the Render dashboard under Environment Variables');
+      console.error('DATABASE_URL environment variable is not set');
       process.exit(1);
     }
     
@@ -69,39 +97,30 @@ const startServer = async () => {
     try {
       new URL(process.env.DATABASE_URL);
     } catch (e) {
-      console.error('❌ DATABASE_URL is not a valid URL format');
+      console.error('DATABASE_URL is not a valid URL format');
       process.exit(1);
     }
     
-    // Ensure SSL mode is set for Supabase if in production
+    // Ensure SSL mode is set for database if in production
     if (process.env.NODE_ENV === 'production' && 
-        process.env.DATABASE_URL.includes('supabase') && 
         !process.env.DATABASE_URL.includes('sslmode=require')) {
-      console.warn('⚠️  For Supabase in production, your DATABASE_URL should include sslmode=require');
-      console.warn('⚠️  Adding sslmode=require to your DATABASE_URL');
-      
-      // Modify the DATABASE_URL to include sslmode=require if it's missing
       const url = new URL(process.env.DATABASE_URL);
       if (!url.searchParams.has('sslmode')) {
         url.searchParams.set('sslmode', 'require');
         process.env.DATABASE_URL = url.toString();
-        console.log('✅ Added sslmode=require to DATABASE_URL');
       }
     }
     
     const dbConnected = await checkDatabaseConnection();
     if (!dbConnected) {
       console.error('Database connection failed. Server will not start.');
-      console.error('Please verify your DATABASE_URL in Render environment variables.');
-      console.error('For Supabase connections, ensure:');
-      console.error('1. Database connection string includes SSL configuration: sslmode=require');
-      console.error('2. Supabase project has allowed Render IP addresses in Project Settings → Database → Network');
-      console.error('   Render IP ranges: https://render.com/docs/infrastructure#egress-ip-addresses');
       process.exit(1);
     }
     
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT} | Database: ✅ Connected`);
+      console.log(`Server running in ${NODE_ENV} mode on port ${PORT}`);
+      console.log(`API available at http://localhost:${PORT}`);
+      console.log(`Socket.IO configured for origins: ${allowedOrigins.join(', ')}`);
     });
   } catch (error) {
     console.error('Server startup error:', error);
