@@ -78,7 +78,15 @@ const startServer = async () => {
         process.env.DATABASE_URL.includes('supabase') && 
         !process.env.DATABASE_URL.includes('sslmode=require')) {
       console.warn('⚠️  For Supabase in production, your DATABASE_URL should include sslmode=require');
-      console.warn('⚠️  Current URL might not have proper SSL configuration');
+      console.warn('⚠️  Adding sslmode=require to your DATABASE_URL');
+      
+      // Modify the DATABASE_URL to include sslmode=require if it's missing
+      const url = new URL(process.env.DATABASE_URL);
+      if (!url.searchParams.has('sslmode')) {
+        url.searchParams.set('sslmode', 'require');
+        process.env.DATABASE_URL = url.toString();
+        console.log('✅ Added sslmode=require to DATABASE_URL');
+      }
     }
     
     const dbConnected = await checkDatabaseConnection();
