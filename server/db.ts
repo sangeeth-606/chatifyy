@@ -24,8 +24,9 @@ export async function checkDatabaseConnection() {
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`Database URL format: ${maskDatabaseUrl(process.env.DATABASE_URL)}`);
       
-      await prisma.$connect();
-      console.log('Database connection successful');
+      // Try to run a simple query to test the connection
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('✅ Database connection successful');
       return true;
     } catch (error:any) {
       retries++;
@@ -36,20 +37,17 @@ export async function checkDatabaseConnection() {
         console.error(`Error code: ${error.code}`);
       }
       
-      if (error.message.includes('Connection refused') || error.message.includes("Can't reach database server")) {
-        console.error('This may be due to network restrictions. Please check:');
-        console.error('1. Your database firewall rules allow connections from Render IPs');
-        console.error('2. Your DATABASE_URL includes proper SSL configuration (sslmode=require)');
-        console.error('3. The database server is running and accessible from outside networks');
-        
-        // Supabase specific guidance
-        if (process.env.DATABASE_URL?.includes('supabase')) {
-          console.error('\nSUPABASE SPECIFIC GUIDANCE:');
-          console.error('- Go to your Supabase project dashboard → Settings → Database');
-          console.error('- Under "Connection Pooling", ensure "Pooler Mode" is set to "Transaction"');
-          console.error('- Under "Network", add Render\'s IP addresses to the allowed list:');
-          console.error('  Render IP ranges: https://render.com/docs/infrastructure#egress-ip-addresses');
-        }
+      if (error.message.includes('Connection refused') || 
+          error.message.includes("Can't reach database server") ||
+          error.message.includes("timeout")) {
+        console.error('\nNETWORK CONNECTIVITY ISSUE DETECTED:');
+        console.error('This is likely because Render cannot connect to your Supabase database.');
+        console.error('Please take the following steps in your Supabase dashboard:');
+        console.error('1. Go to: https://supabase.com/dashboard/project/_/settings/database');
+        console.error('2. Under "Connection Pooling", set "Pooler Mode" to "Transaction"');
+        console.error('3. Go to "Network" tab and click "Add Network Restriction"');
+        console.error('4. Add all Render IP ranges from: https://render.com/docs/infrastructure#egress-ip-addresses');
+        console.error('   (Your database currently restricts which IPs can connect to it)');
       }
       
       if (retries < MAX_RETRIES) {
@@ -60,6 +58,7 @@ export async function checkDatabaseConnection() {
   }
   
   console.error(`Failed to connect to the database after ${MAX_RETRIES} attempts.`);
+  console.error('CRITICAL ACTION REQUIRED: You must configure your Supabase database to allow Render IPs.');
   return false;
 }
 
