@@ -1,5 +1,10 @@
 import dotenv from 'dotenv';
-dotenv.config();
+// Try to load .env but don't fail if it doesn't exist
+try {
+  dotenv.config();
+} catch (e) {
+  console.log('No .env file found, using environment variables');
+}
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';

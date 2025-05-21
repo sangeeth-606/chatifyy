@@ -8,7 +8,7 @@
     "start:prod": "node dist/server.js",
     "dev": "nodemon --exec ts-node server.ts",
     "watch": "concurrently \"tsc --watch\" \"nodemon dist/server.js\"",
-    "build": "tsc && mkdir -p dist/generated && cp -r ./generated ./dist/ && cp .env ./dist/ || true",
+    "build": "tsc && mkdir -p dist/generated && cp -r ./generated ./dist/ && (test -f .env && cp .env ./dist/ || echo 'No .env file to copy, using environment variables')",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
