@@ -19,7 +19,12 @@ const Chat: React.FC<ChatRoomProps> = () => {
   const lastSentMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000", { transports: ["polling"] });
+    const backendUrl = import.meta.env.VITE_USE_PRODUCTION === "true" 
+      ? import.meta.env.VITE_API_URL_PRODUCTION 
+      : import.meta.env.VITE_API_URL_LOCAL;
+      
+    console.log(`Connecting to backend at: ${backendUrl}`);
+    const newSocket = io(backendUrl, { transports: ["polling"] });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
