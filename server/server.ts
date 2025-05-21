@@ -50,11 +50,31 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Start the server
 const startServer = async () => {
   try {
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Attempting to start server on port ${PORT}`);
+    
+    // Check for required environment variables
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL environment variable is not set');
+      process.exit(1);
+    }
+    
+    // Validate database URL format
+    try {
+      new URL(process.env.DATABASE_URL);
+    } catch (e) {
+      console.error('❌ DATABASE_URL is not a valid URL format');
+      process.exit(1);
+    }
+    
     const dbConnected = await checkDatabaseConnection();
     if (!dbConnected) {
       console.error('Database connection failed. Server will not start.');
+      console.error('Please verify your DATABASE_URL in Render environment variables.');
+      console.error('For Supabase connections, ensure the connection string includes SSL configuration: sslmode=require');
       process.exit(1);
     }
+    
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT} | Database: ✅ Connected`);
     });
