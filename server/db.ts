@@ -1,10 +1,10 @@
 import { PrismaClient } from './generated/prisma/index.js'
 
-// Initialize Prisma client with SSL configuration
+// Initialize Prisma client with explicit SSL configuration for production environments
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL
+      url: process.env.DATABASE_URL,
     }
   }
 })
@@ -31,6 +31,15 @@ export async function checkDatabaseConnection() {
       console.error('1. Your database firewall rules allow connections from Render IPs');
       console.error('2. Your DATABASE_URL includes proper SSL configuration (sslmode=require)');
       console.error('3. The database server is running and accessible from outside networks');
+      
+      // Supabase specific guidance
+      if (process.env.DATABASE_URL?.includes('supabase')) {
+        console.error('\nSUPABASE SPECIFIC GUIDANCE:');
+        console.error('- Go to your Supabase project dashboard → Settings → Database');
+        console.error('- Under "Connection Pooling", ensure "Pooler Mode" is set to "Transaction"');
+        console.error('- Under "Network", add Render\'s IP addresses to the allowed list:');
+        console.error('  Render IP ranges: https://render.com/docs/infrastructure#egress-ip-addresses');
+      }
     }
     
     return false;

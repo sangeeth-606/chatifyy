@@ -61,6 +61,7 @@ const startServer = async () => {
     // Check for required environment variables
     if (!process.env.DATABASE_URL) {
       console.error('❌ DATABASE_URL environment variable is not set');
+      console.error('You need to set this in the Render dashboard under Environment Variables');
       process.exit(1);
     }
     
@@ -72,11 +73,22 @@ const startServer = async () => {
       process.exit(1);
     }
     
+    // Ensure SSL mode is set for Supabase if in production
+    if (process.env.NODE_ENV === 'production' && 
+        process.env.DATABASE_URL.includes('supabase') && 
+        !process.env.DATABASE_URL.includes('sslmode=require')) {
+      console.warn('⚠️  For Supabase in production, your DATABASE_URL should include sslmode=require');
+      console.warn('⚠️  Current URL might not have proper SSL configuration');
+    }
+    
     const dbConnected = await checkDatabaseConnection();
     if (!dbConnected) {
       console.error('Database connection failed. Server will not start.');
       console.error('Please verify your DATABASE_URL in Render environment variables.');
-      console.error('For Supabase connections, ensure the connection string includes SSL configuration: sslmode=require');
+      console.error('For Supabase connections, ensure:');
+      console.error('1. Database connection string includes SSL configuration: sslmode=require');
+      console.error('2. Supabase project has allowed Render IP addresses in Project Settings → Database → Network');
+      console.error('   Render IP ranges: https://render.com/docs/infrastructure#egress-ip-addresses');
       process.exit(1);
     }
     
