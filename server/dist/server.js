@@ -8,7 +8,7 @@ import { checkDatabaseConnection } from './db.js';
 import { roomSockets } from './roomSockets.js';
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 5000; // Changed to 5000 to match client
+const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());

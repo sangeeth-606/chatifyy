@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
-import { X, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 interface ChatRoomProps {}
 

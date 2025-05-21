@@ -20,11 +20,13 @@ const LandingPage: React.FC = () => {
   };
 
   const handleJoinExistingRoom = () => {
-    if (roomCodeInput) {
+    if (!roomCodeInput) {
+      alert('Please enter a room code');
+    } else if (roomCodeInput.length < 5) {
+      alert('Room code should be 5 digits');
+    } else {
       setCurrentRoomCode(roomCodeInput);
       setShowNameModal(true);
-    } else {
-      alert('Please enter a room code');
     }
   };
 
