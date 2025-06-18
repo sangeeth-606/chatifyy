@@ -14,10 +14,10 @@ datasource db {
 }
 
 model User {
-  id        String        @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @default(now()) @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
   rooms     Room[]
   messages  ChatMessage[]
 }
