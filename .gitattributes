@@ -1,0 +1,2 @@
+server/generated/prisma/* linguist-vendored
+server/generated/prisma/runtime/* linguist-vendored 
